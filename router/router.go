@@ -28,5 +28,13 @@ func SetupRouter(hub *ws.Hub) *gin.Engine {
 	// 注册 WebSocket 路由：客户端连接 ws://localhost:8080/ws/1?username=aaa
 	r.GET("/ws/:roomId", handlers.ServeWs(hub))
 
+	r.POST("/chatrooms", handlers.CreateChatroom)
+
+	r.POST("/chatrooms/join", handlers.JoinChatroom)
+
+	r.GET("/chatrooms/user/:username", handlers.GetUserChatrooms)
+
+	r.GET("/chatrooms/:roomId", handlers.GetChatroomByRoomID)
+
 	return r
 }

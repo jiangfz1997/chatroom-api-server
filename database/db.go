@@ -34,4 +34,32 @@ func InitDB() {
 	}
 	//打印初始化成功的日志
 	fmt.Println("数据库初始化成功！chatroom.db 已准备好")
+
+	// 创建 chatrooms 表（如果不存在）
+	createRoomTable := `
+	CREATE TABLE IF NOT EXISTS chatrooms (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		room_id TEXT NOT NULL UNIQUE,
+		name TEXT NOT NULL,
+		is_private BOOLEAN DEFAULT false,
+		created_by TEXT NOT NULL,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	);`
+	if _, err := DB.Exec(createRoomTable); err != nil {
+		log.Fatal("建表失败（chatrooms）:", err)
+	}
+
+	// 创建 user_chatroom 表（用于记录用户加入的聊天室）
+	userChatroomTable := `
+	CREATE TABLE IF NOT EXISTS user_chatroom (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		user_id INTEGER NOT NULL,
+		chatroom_id TEXT NOT NULL,
+		joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (user_id) REFERENCES users(id)
+	);`
+	if _, err := DB.Exec(userChatroomTable); err != nil {
+		log.Fatal("user_chatroom 表创建失败：", err)
+	}
+
 }
