@@ -15,42 +15,6 @@ const (
 	maxMessageSize = 512
 )
 
-// 读取客户端发来的消息并广播
-//
-//	func (c *Client) ReadPump(hub *Hub) {
-//		defer func() {
-//			hub.LeaveRoom(c.RoomID, c)
-//			c.Conn.Close()
-//		}()
-//
-//		c.Conn.SetReadLimit(maxMessageSize)
-//		c.Conn.SetReadDeadline(time.Now().Add(pongWait))
-//		c.Conn.SetPongHandler(func(string) error {
-//			c.Conn.SetReadDeadline(time.Now().Add(pongWait))
-//			return nil
-//		})
-//
-//		for {
-//			_, message, err := c.Conn.ReadMessage()
-//			if err != nil {
-//				log.Println("读消息错误:", err)
-//				break
-//			}
-//
-//			// 构造 JSON 格式消息
-//			msg := map[string]string{
-//				"sender": c.Username,
-//				"text":   string(message),
-//			}
-//			jsonMsg, err := json.Marshal(msg)
-//			if err != nil {
-//				log.Println("JSON 编码失败:", err)
-//				continue
-//			}
-//
-//			hub.Broadcast(c.RoomID, jsonMsg)
-//		}
-//	}
 func (c *Client) ReadPump(hub *Hub) {
 	defer func() {
 		hub.LeaveRoom(c.RoomID, c)

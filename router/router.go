@@ -36,5 +36,7 @@ func SetupRouter(hub *ws.Hub) *gin.Engine {
 
 	r.GET("/chatrooms/:roomId", handlers.GetChatroomByRoomID)
 
+	r.GET("/messages/:roomId", handlers.GetChatroomMessages)
+
 	return r
 }

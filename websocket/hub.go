@@ -1,7 +1,10 @@
 package websocket
 
 import (
+	"chatroom-api/models" // 此处有修改
+	"encoding/json"       // 此处有修改
 	"github.com/gorilla/websocket"
+	"log"
 	"sync"
 )
 
@@ -69,6 +72,23 @@ func (h *Hub) Broadcast(roomID string, message []byte) {
 	if !exists {
 		return
 	}
+
+	// 先尝试解析消息内容（保存到数据库） // 此处有修改
+	var msgData struct { // 此处有修改
+		Sender string `json:"sender"` // 此处有修改
+		Text   string `json:"text"`   // 此处有修改
+	} // 此处有修改
+	if err := json.Unmarshal(message, &msgData); err == nil {
+		err := models.SaveMessage(roomID, msgData.Sender, msgData.Text)
+		if err != nil {
+			log.Printf("保存消息失败: %v", err) // 显示保存失败原因
+		} else {
+			log.Printf("已保存消息: [%s] %s", msgData.Sender, msgData.Text) // 提示成功保存
+		}
+	} else {
+		log.Printf("消息解析失败: %v", err) // 显示解析失败的原始错误
+	}
+
 	room.Lock.Lock()
 	defer room.Lock.Unlock()
 

@@ -62,4 +62,17 @@ func InitDB() {
 		log.Fatal("user_chatroom 表创建失败：", err)
 	}
 
+	// 创建 messages 表（用于保存聊天室消息）
+	messageTable := `
+	CREATE TABLE IF NOT EXISTS messages (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		room_id TEXT NOT NULL,
+		sender TEXT NOT NULL,
+		text TEXT NOT NULL,
+		timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+	);`
+	if _, err := DB.Exec(messageTable); err != nil {
+		log.Fatal("messages 表创建失败：", err)
+	}
+
 }
