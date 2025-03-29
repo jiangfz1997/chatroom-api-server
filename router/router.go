@@ -32,6 +32,8 @@ func SetupRouter(hub *ws.Hub) *gin.Engine {
 
 	r.POST("/chatrooms/join", handlers.JoinChatroom)
 
+	r.POST("/chatrooms/exit", handlers.ExitChatroom)
+
 	r.GET("/chatrooms/user/:username", handlers.GetUserChatrooms)
 
 	r.GET("/chatrooms/:roomId", handlers.GetChatroomByRoomID)
