@@ -4,75 +4,64 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	_ "modernc.org/sqlite"
-	"os"
+	//"os"
+	_ "github.com/lib/pq"
 )
 
 var DB *sql.DB
 
 func InitDB() {
-	dir, _ := os.Getwd()
-	fmt.Println("当前工作目录：", dir)
-
+	dsn := "host=localhost user=chat password=123456 dbname=chatroom port=5432 sslmode=disable"
 	var err error
-
-	// 连接数据库，没有文件会自动创建
-	DB, err = sql.Open("sqlite", "chatroom.db")
+	DB, err = sql.Open("postgres", dsn)
 	if err != nil {
-		log.Fatal("数据库连接失败：", err)
+		log.Fatal("❌ PostgreSQL 连接失败：", err)
 	}
 
-	// 创建 users 表（如果不存在）
-	createTable := `
+	// 检查连接
+	if err := DB.Ping(); err != nil {
+		log.Fatal("❌ 数据库无法连接：", err)
+	}
+
+	// 建表语句
+	createUsers := `
 	CREATE TABLE IF NOT EXISTS users (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		id SERIAL PRIMARY KEY,
 		username TEXT NOT NULL UNIQUE,
 		password TEXT NOT NULL
 	);`
-	if _, err := DB.Exec(createTable); err != nil {
-		log.Fatal("建表失败：", err)
-	}
-	//打印初始化成功的日志
-	fmt.Println("数据库初始化成功！chatroom.db 已准备好")
+	_, _ = DB.Exec(createUsers)
 
-	// 创建 chatrooms 表（如果不存在）
-	createRoomTable := `
+	createRooms := `
 	CREATE TABLE IF NOT EXISTS chatrooms (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		id SERIAL PRIMARY KEY,
 		room_id TEXT NOT NULL UNIQUE,
 		name TEXT NOT NULL,
 		is_private BOOLEAN DEFAULT false,
 		created_by TEXT NOT NULL,
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);`
-	if _, err := DB.Exec(createRoomTable); err != nil {
-		log.Fatal("建表失败（chatrooms）:", err)
-	}
+	_, _ = DB.Exec(createRooms)
 
-	// 创建 user_chatroom 表（用于记录用户加入的聊天室）
-	userChatroomTable := `
+	createUserRoom := `
 	CREATE TABLE IF NOT EXISTS user_chatroom (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		id SERIAL PRIMARY KEY,
 		user_id INTEGER NOT NULL,
 		chatroom_id TEXT NOT NULL,
-		joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 		FOREIGN KEY (user_id) REFERENCES users(id)
 	);`
-	if _, err := DB.Exec(userChatroomTable); err != nil {
-		log.Fatal("user_chatroom 表创建失败：", err)
-	}
+	_, _ = DB.Exec(createUserRoom)
 
-	// 创建 messages 表（用于保存聊天室消息）
-	messageTable := `
+	createMessages := `
 	CREATE TABLE IF NOT EXISTS messages (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		id SERIAL PRIMARY KEY,
 		room_id TEXT NOT NULL,
 		sender TEXT NOT NULL,
 		text TEXT NOT NULL,
-		timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+		timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);`
-	if _, err := DB.Exec(messageTable); err != nil {
-		log.Fatal("messages 表创建失败：", err)
-	}
+	_, _ = DB.Exec(createMessages)
 
+	fmt.Println("✅ PostgreSQL 数据库初始化完成！")
 }

@@ -1,12 +1,12 @@
 package handlers
 
 import (
-	"chatroom-api/database"
-	"chatroom-api/models"
-	"database/sql"
-	"fmt"
+	//"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"chatroom-api/dynamodb"
 	"github.com/gin-gonic/gin"
+	"log"
 	"net/http"
+	"strings"
 )
 
 type RegisterRequest struct {
@@ -16,60 +16,54 @@ type RegisterRequest struct {
 
 func Register(c *gin.Context) {
 	var req RegisterRequest
-	fmt.Println("收到注册请求：", req.Username, req.Password)
-
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "格式错误"})
 		return
 	}
 
-	// 检查用户名是否已存在
-	var exists int
-	err := database.DB.QueryRow("SELECT COUNT(*) FROM users WHERE username = ?", req.Username).Scan(&exists)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "查询失败"})
-		return
-	}
-	if exists > 0 {
-		c.JSON(http.StatusConflict, gin.H{"error": "用户名已存在"})
-		return
+	// 创建用户结构体
+	user := dynamodb.User{
+		Username: req.Username,
+		Password: req.Password, // 注意：生产环境应加密！
 	}
 
-	// 插入用户数据
-	_, err = database.DB.Exec("INSERT INTO users (username, password) VALUES (?, ?)", req.Username, req.Password)
+	// 调用 DynamoDB 创建函数
+	err := dynamodb.CreateUser(user)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "注册失败"})
+		if strings.Contains(err.Error(), "ConditionalCheckFailed") {
+			c.JSON(http.StatusConflict, gin.H{"error": "用户名已存在"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "注册失败"})
+		}
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "注册成功"})
-	fmt.Println("写入数据库成功")
 }
 
 func Login(c *gin.Context) {
-	var req models.User
+	log.Println("🔥 Login Hit!")
+	var req dynamodb.User
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "请求参数格式错误"})
 		return
 	}
 
-	var storedPassword string
-	err := database.DB.QueryRow("SELECT password FROM users WHERE username = ?", req.Username).Scan(&storedPassword)
-
-	if err == sql.ErrNoRows {
+	// 查询用户
+	user, err := dynamodb.GetUserByUsername(req.Username)
+	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "用户名不存在"})
 		return
 	}
 
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "数据库查询失败"})
-		return
-	}
-
-	if storedPassword != req.Password {
+	// 验证密码（生产中应加密）
+	if user.Password != req.Password {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "密码错误"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "登录成功", "username": req.Username})
+	c.JSON(http.StatusOK, gin.H{
+		"message":  "登录成功",
+		"username": user.Username,
+	})
 }
