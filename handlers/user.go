@@ -3,6 +3,7 @@ package handlers
 import (
 	//"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"chatroom-api/dynamodb"
+	"chatroom-api/utils"
 	"github.com/gin-gonic/gin"
 	"log"
 	"net/http"
@@ -61,9 +62,20 @@ func Login(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "密码错误"})
 		return
 	}
-
+	// 生成 JWT Token
+	token, err := utils.GenerateToken(req.Username)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Token 生成失败"})
+		return
+	}
+	//c.JSON(http.StatusOK, gin.H{
+	//	"message":  "登录成功",
+	//	"username": user.Username,
+	//})
 	c.JSON(http.StatusOK, gin.H{
 		"message":  "登录成功",
-		"username": user.Username,
+		"username": req.Username,
+		"token":    token, // 加上 token 字段
 	})
+
 }

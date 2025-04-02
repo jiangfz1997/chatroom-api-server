@@ -1,7 +1,8 @@
 package router
 
 import (
-	"chatroom-api/handlers"       // handler 层
+	"chatroom-api/handlers" // handler 层
+	"chatroom-api/middleware"
 	"github.com/gin-contrib/cors" // 跨域中间件
 	"github.com/gin-gonic/gin"
 	"time"
@@ -27,19 +28,32 @@ func SetupRouter() *gin.Engine {
 	// 注册 WebSocket 路由：客户端连接 ws://localhost:8080/ws/1?username=aaa
 	//r.GET("/ws/:roomId", handlers.ServeWs(hub))
 
-	r.POST("/chatrooms", handlers.CreateChatroom)
+	//以下接口走鉴权
+	//r.POST("/chatrooms", handlers.CreateChatroom)
+	//
+	//r.POST("/chatrooms/join", handlers.JoinChatroom)
+	//
+	//r.POST("/chatrooms/exit", handlers.ExitChatroom)
+	//
+	//r.GET("/chatrooms/user/:username", handlers.GetUserChatrooms)
+	//
+	//r.GET("/chatrooms/:roomId", handlers.GetChatroomByRoomID)
+	//
+	//r.GET("/messages/:roomId", handlers.GetChatroomMessages)
+	//
+	//r.GET("/chatrooms/:roomId/enter", handlers.EnterChatRoom)
 
-	r.POST("/chatrooms/join", handlers.JoinChatroom)
+	// 需要鉴权的接口挂在 auth group 下
+	auth := r.Group("/")
+	auth.Use(middleware.AuthMiddleware())
 
-	r.POST("/chatrooms/exit", handlers.ExitChatroom)
-
-	r.GET("/chatrooms/user/:username", handlers.GetUserChatrooms)
-
-	r.GET("/chatrooms/:roomId", handlers.GetChatroomByRoomID)
-
-	r.GET("/messages/:roomId", handlers.GetChatroomMessages)
-
-	r.GET("/chatrooms/:roomId/enter", handlers.EnterChatRoom)
+	auth.POST("/chatrooms", handlers.CreateChatroom)
+	auth.POST("/chatrooms/join", handlers.JoinChatroom)
+	auth.POST("/chatrooms/exit", handlers.ExitChatroom)
+	auth.GET("/chatrooms/user/:username", handlers.GetUserChatrooms)
+	auth.GET("/chatrooms/:roomId", handlers.GetChatroomByRoomID)
+	auth.GET("/messages/:roomId", handlers.GetChatroomMessages)
+	auth.GET("/chatrooms/:roomId/enter", handlers.EnterChatRoom)
 
 	return r
 }
