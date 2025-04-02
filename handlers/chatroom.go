@@ -2,13 +2,30 @@ package handlers
 
 import (
 	"chatroom-api/dynamodb"
+	"encoding/hex"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"log"
+	"math/rand"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 )
+
+var wsHost string
+
+func init() {
+	wsHost = os.Getenv("WS_HOST")
+	if wsHost == "" {
+		wsHost = "ws://localhost:8081" // fallback 開發環境
+	}
+}
+func generateRoomID() string {
+	bytes := make([]byte, 6)
+	_, _ = rand.Read(bytes)
+	return hex.EncodeToString(bytes)
+}
 
 type JoinChatroomRequest struct {
 	Username   string `json:"username"`    // 用户名
@@ -189,7 +206,8 @@ func EnterChatRoom(c *gin.Context) {
 	// TODO: 后续可加负载均衡调度逻辑，这里先写死
 	//wsHost := "ws://host.docker.internal:8081"
 	// 构造返回的 WebSocket 地址
-	wsHost := getNextWsHost()
+	//wsHost := getNextWsHost()
+	//wsURL := fmt.Sprintf("%s/ws/%s?username=%s", wsHost, roomID, username)
 	wsURL := fmt.Sprintf("%s/ws/%s?username=%s", wsHost, roomID, username)
 
 	c.JSON(http.StatusOK, gin.H{
@@ -199,14 +217,14 @@ func EnterChatRoom(c *gin.Context) {
 }
 
 // For development only
-var wsIndex = 0
-var ports = []int{8081, 8081} // TODO: need to get from env
-
-func getNextWsHost() string {
-	port := ports[wsIndex%len(ports)]
-	wsIndex++
-	return fmt.Sprintf("ws://10.0.0.23:%d", port)
-}
+//var wsIndex = 0
+//var ports = []int{8081, 8081}
+//
+//func getNextWsHost() string {
+//	port := ports[wsIndex%len(ports)]
+//	wsIndex++
+//	return fmt.Sprintf("ws://10.0.0.23:%d", port)
+//}
 
 func GetChatroomByRoomID(c *gin.Context) {
 	roomID := c.Param("roomId")

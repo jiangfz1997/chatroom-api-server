@@ -15,22 +15,21 @@ import (
 var DB *dynamodb.Client
 
 func InitDB() {
-	env := os.Getenv("DYNAMODB_ENV")
-	if env == "" {
-		env = "local" // 默认环境
+	endpoint := os.Getenv("DYNAMODB_ENDPOINT") // 本地模式會設這個
+	region := os.Getenv("DYNAMODB_REGION")
+	if region == "" {
+		region = "us-east-1" // fallback
 	}
-
-	region := "us-west-2" // 可以放进 env 里也行
 	var cfg aws.Config
 	var err error
 
-	if env == "local" {
+	if endpoint != "" {
 		log.Println("🌱 连接本地 DynamoDB (local mode)")
 
 		customResolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, _ ...interface{}) (aws.Endpoint, error) {
 			if service == dynamodb.ServiceID {
 				return aws.Endpoint{
-					URL:           "http://localhost:8000", // DynamoDB Local 地址
+					URL:           endpoint, // DynamoDB Local 地址
 					SigningRegion: region,
 				}, nil
 			}
@@ -48,7 +47,7 @@ func InitDB() {
 			log.Fatal("❌ 加载本地 DynamoDB 配置失败:", err)
 		}
 
-	} else if env == "aws" {
+	} else {
 		log.Println("🚀 连接 AWS DynamoDB（真实云服务）")
 
 		cfg, err = config.LoadDefaultConfig(context.TODO(),
@@ -57,8 +56,6 @@ func InitDB() {
 		if err != nil {
 			log.Fatal("❌ 加载 AWS 配置失败:", err)
 		}
-	} else {
-		log.Fatalf("❌ 未知 DYNAMODB_ENV：%s", env)
 	}
 
 	DB = dynamodb.NewFromConfig(cfg)
