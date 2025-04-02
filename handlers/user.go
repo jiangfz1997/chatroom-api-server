@@ -28,9 +28,10 @@ func Register(c *gin.Context) {
 		Password: req.Password, // 注意：生产环境应加密！
 	}
 
-	// 调用 DynamoDB 创建函数
 	err := dynamodb.CreateUser(user)
 	if err != nil {
+		log.Printf("Create user failed: %v", err)
+
 		if strings.Contains(err.Error(), "ConditionalCheckFailed") {
 			c.JSON(http.StatusConflict, gin.H{"error": "用户名已存在"})
 		} else {

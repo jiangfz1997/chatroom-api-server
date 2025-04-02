@@ -18,7 +18,7 @@ func InitDB() {
 	endpoint := os.Getenv("DYNAMODB_ENDPOINT") // 本地模式會設這個
 	region := os.Getenv("DYNAMODB_REGION")
 	if region == "" {
-		region = "us-east-1" // fallback
+		region = "us-west-2" // fallback
 	}
 	var cfg aws.Config
 	var err error
