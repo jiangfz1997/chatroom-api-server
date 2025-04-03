@@ -3,13 +3,14 @@ package dynamodb
 import (
 	log "chatroom-api/logger"
 	"context"
+	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
-	//"log"
 	"time"
+	//"log"
 )
 
 var ChatroomTableName = "chatrooms" // 可换成环境变量或配置文件读取
@@ -23,7 +24,7 @@ type Chatroom struct {
 	Users     []string `json:"users" dynamodbav:"users"`
 }
 
-func CreateChatroomTable() {
+func CreateChatroomTable() error {
 	log.Log.Info("准备创建 chatrooms 表")
 	_, err := DB.CreateTable(context.TODO(), &dynamodb.CreateTableInput{
 		TableName: aws.String(ChatroomTableName),
@@ -42,10 +43,18 @@ func CreateChatroomTable() {
 		BillingMode: types.BillingModePayPerRequest,
 	})
 	if err != nil {
-		log.Log.Fatalf("创建 chatrooms 表失败: %v", err)
+		var rne *types.ResourceInUseException
+		if errors.As(err, &rne) {
+			log.Log.Info("⚠️ 聊天室表 [%s] 已存在，跳过创建", ChatroomTableName)
+			return nil
+		}
+
+		return fmt.Errorf("创建聊天室表 [%s] 失败: %w", ChatroomTableName, err)
 	}
 	log.Log.Info("chatrooms 表创建成功")
+	return nil
 }
+
 func CreateChatroom(chatroom Chatroom) error {
 	// 时间格式化（标准 ISO 时间）
 	if chatroom.CreatedAt == "" {
@@ -69,6 +78,7 @@ func CreateChatroom(chatroom Chatroom) error {
 		log.Log.Infof("聊天室创建成功: room_id=%s", chatroom.RoomID)
 	}
 	return err
+
 }
 
 func GetChatroom(chatroomId string) (Chatroom, error) {

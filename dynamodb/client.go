@@ -18,23 +18,26 @@ func InitDB() {
 	endpoint := os.Getenv("DYNAMODB_ENDPOINT") // 本地模式會設這個
 	region := os.Getenv("DYNAMODB_REGION")
 	if region == "" {
-		region = "us-west-2" // fallback
-		log.Log.Warn("未设置 DYNAMODB_REGION，默认使用 us-west-2")
+		region = "us-west-2"
+		log.Log.Warn("⚠️ 未设置 DYNAMODB_REGION，默认使用 us-west-2")
+	} else {
+		log.Log.Infof("✅ 检测到 DYNAMODB_REGION: %s", region)
 	}
 	var cfg aws.Config
 	var err error
 
 	if endpoint != "" {
 		log.Log.Info("连接本地 DynamoDB (local mode)")
-
+		log.Log.Infof("当前 DynamoDB Endpoint: %s", endpoint)
 		customResolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, _ ...interface{}) (aws.Endpoint, error) {
 			if service == dynamodb.ServiceID {
+				log.Log.Infof("📍 自定义解析器：服务 [%s]，区域 [%s]", service, region)
 				return aws.Endpoint{
 					URL:           endpoint, // DynamoDB Local 地址
 					SigningRegion: region,
 				}, nil
 			}
-			return aws.Endpoint{}, fmt.Errorf("unknown endpoint requested")
+			return aws.Endpoint{}, fmt.Errorf("unknown endpoint requested %s", service)
 		})
 
 		cfg, err = config.LoadDefaultConfig(context.TODO(),
@@ -64,8 +67,25 @@ func InitDB() {
 	log.Log.Info("DynamoDB 客户端初始化成功")
 }
 
-func CreateAllTables() {
-	//CreateUserTable()
-	//CreateChatroomTable()
-	CreateMessageTable()
+func CreateAllTables() error {
+	var errs []error
+
+	if err := CreateUserTable(); err != nil {
+		errs = append(errs, fmt.Errorf("CreateUserTable failed: %w", err))
+	}
+	if err := CreateChatroomTable(); err != nil {
+		errs = append(errs, fmt.Errorf("CreateChatroomTable failed: %w", err))
+	}
+	if err := CreateMessageTable(); err != nil {
+		errs = append(errs, fmt.Errorf("CreateMessageTable failed: %w", err))
+	}
+	if len(errs) > 0 {
+		errMsg := "❌ Table creation encountered errors:\n"
+		for _, e := range errs {
+			errMsg += " - " + e.Error() + "\n"
+		}
+		return fmt.Errorf(errMsg)
+	}
+
+	return nil
 }

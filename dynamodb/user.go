@@ -4,6 +4,7 @@ import (
 	log "chatroom-api/logger"
 	"context"
 	"errors"
+	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
@@ -11,7 +12,7 @@ import (
 )
 
 type User struct {
-	Username string `dynamodbav:"username"` // 主键
+	Username string `dynamodbav:"username"` // 👈 主键
 	Password string `dynamodbav:"password"`
 }
 
@@ -66,7 +67,7 @@ func GetUserByUsername(username string) (*User, error) {
 	return &user, nil
 }
 
-func CreateUserTable() {
+func CreateUserTable() error {
 	log.Log.Info("开始创建 users 表")
 	_, err := DB.CreateTable(context.TODO(), &dynamodb.CreateTableInput{
 		TableName: aws.String(UserTableName),
@@ -85,7 +86,16 @@ func CreateUserTable() {
 		BillingMode: types.BillingModePayPerRequest, // 免费账号推荐按需计费
 	})
 	if err != nil {
-		log.Log.Fatalf("创建 users 表失败: %v", err)
+		// 容错：如果表已存在，不返回错误
+		var rne *types.ResourceInUseException
+		if errors.As(err, &rne) {
+			log.Log.Info("⚠️ 用户表 [%s] 已存在，跳过创建", UserTableName)
+			return nil
+		}
+
+		// 其余错误要向上传递
+		return fmt.Errorf("创建用户表 [%s] 失败: %w", UserTableName, err)
 	}
 	log.Log.Info("users 表创建成功")
+	return nil
 }

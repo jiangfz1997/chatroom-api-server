@@ -19,7 +19,7 @@ func SetupRouter() *gin.Engine {
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"},
 		AllowMethods:     []string{"GET", "POST", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}))
@@ -28,7 +28,7 @@ func SetupRouter() *gin.Engine {
 	log.Log.Info("注册公开接口: /register, /login")
 	r.POST("/register", handlers.Register)
 	r.POST("/login", handlers.Login)
-
+	r.GET("/health", handlers.HealthCheck)
 	// 注册 WebSocket 路由：客户端连接 ws://localhost:8080/ws/1?username=aaa
 	//r.GET("/ws/:roomId", handlers.ServeWs(hub))
 

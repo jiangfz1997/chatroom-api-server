@@ -45,6 +45,9 @@ func Register(c *gin.Context) {
 	log.Log.Infof("用户注册成功: %s", req.Username)
 	c.JSON(http.StatusOK, gin.H{"message": "注册成功"})
 }
+func HealthCheck(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"status": "ok"})
+}
 
 func Login(c *gin.Context) {
 	log.Log.Info("🔥 Login Hit!")

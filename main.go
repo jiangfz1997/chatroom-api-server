@@ -9,14 +9,9 @@ import (
 )
 
 func main() {
+
 	logger.InitLogger() // 初始化日志系统
 	log := logger.Log   // 使用自定义 logrus 实例
-	//_ = godotenv.Load(".env")
-	//dynamodb.InitDB() // 初始化 SQLite
-	////dynamodb.CreateAllTables()
-	////hub := &websocket.GlobalHub // 获取全局 Hub 实例
-	//r := router.SetupRouter()
-	//r.Run(":8080")
 	log.Info("服务器启动流程开始")
 
 	err := godotenv.Load(".env")
@@ -29,6 +24,11 @@ func main() {
 	log.Info("开始初始化数据库")
 	dynamodb.InitDB()
 	log.Info("数据库初始化完成")
+
+	if err := dynamodb.CreateAllTables(); err != nil {
+		log.Warn("⚠️ Failed to create DynamoDB tables: %v (ignored)", err)
+		// 你也可以选择加个报警、发送告警邮件等等
+	}
 
 	r := router.SetupRouter()
 	log.Info("启动 HTTP 服务监听 :8080")

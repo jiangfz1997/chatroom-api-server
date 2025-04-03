@@ -3,6 +3,8 @@ package dynamodb
 import (
 	log "chatroom-api/logger"
 	"context"
+	"errors"
+	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
@@ -62,7 +64,7 @@ func GetMessagesBefore(roomID, before string, limit int) ([]Message, error) {
 	return msgs, nil
 }
 
-func CreateMessageTable() {
+func CreateMessageTable() error {
 	log.Log.Info("开始创建 messages 表")
 	_, err := DB.CreateTable(context.TODO(), &dynamodb.CreateTableInput{
 		TableName: aws.String(MessageTableName),
@@ -71,14 +73,20 @@ func CreateMessageTable() {
 			{AttributeName: aws.String("timestamp"), AttributeType: types.ScalarAttributeTypeS},
 		},
 		KeySchema: []types.KeySchemaElement{
-			{AttributeName: aws.String("room_id"), KeyType: types.KeyTypeHash},    // 分区键
-			{AttributeName: aws.String("timestamp"), KeyType: types.KeyTypeRange}, // 排序键
+			{AttributeName: aws.String("room_id"), KeyType: types.KeyTypeHash},    // Partition Key
+			{AttributeName: aws.String("timestamp"), KeyType: types.KeyTypeRange}, // Sort Key
 		},
 		BillingMode: types.BillingModePayPerRequest,
 	})
 	if err != nil {
-		log.Log.Fatalf("创建 messages 表失败: %v", err)
+		var rne *types.ResourceInUseException
+		if errors.As(err, &rne) {
+			log.Log.Info("⚠️ 消息表 [%s] 已存在，跳过创建", MessageTableName)
+			return nil
+		}
+		return fmt.Errorf("创建消息表 [%s] 失败: %w", MessageTableName, err)
 	}
 
 	log.Log.Info("messages 表创建成功（主键为 room_id + timestamp）")
+	return nil
 }
