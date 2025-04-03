@@ -8,6 +8,6 @@ package models
 //		Password string // 密码（此处明文存储，仅开发用，生产应加密）
 //	}
 type User struct {
-	Username string `dynamodbav:"username"` // 👈 主键
+	Username string `dynamodbav:"username"` // 主键
 	Password string `dynamodbav:"password"`
 }

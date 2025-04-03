@@ -1,12 +1,12 @@
 package dynamodb
 
 import (
+	log "chatroom-api/logger"
 	"context"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
-	"log"
 )
 
 import "time"
@@ -30,6 +30,7 @@ func NewMessage(roomID, sender, text string) Message {
 }
 
 func GetMessagesBefore(roomID, before string, limit int) ([]Message, error) {
+	log.Log.Infof("查询历史消息: room=%s, before=%s, limit=%d", roomID, before, limit)
 	input := &dynamodb.QueryInput{
 		TableName:              aws.String(MessageTableName),
 		KeyConditionExpression: aws.String("room_id = :rid AND #ts < :before"),
@@ -41,23 +42,28 @@ func GetMessagesBefore(roomID, before string, limit int) ([]Message, error) {
 			":before": &types.AttributeValueMemberS{Value: before},
 		},
 		Limit:            aws.Int32(int32(limit)),
-		ScanIndexForward: aws.Bool(false), // 👈 倒序
+		ScanIndexForward: aws.Bool(false), // 倒序
 	}
 
 	resp, err := DB.Query(context.TODO(), input)
 	if err != nil {
+		log.Log.Errorf("查询消息失败: %v", err)
 		return nil, err
 	}
 
 	var msgs []Message
 	err = attributevalue.UnmarshalListOfMaps(resp.Items, &msgs)
 	if err != nil {
+		log.Log.Errorf("消息反序列化失败: %v", err)
 		return nil, err
 	}
+
+	log.Log.Infof("成功查询到 %d 条消息", len(msgs))
 	return msgs, nil
 }
 
 func CreateMessageTable() {
+	log.Log.Info("开始创建 messages 表")
 	_, err := DB.CreateTable(context.TODO(), &dynamodb.CreateTableInput{
 		TableName: aws.String(MessageTableName),
 		AttributeDefinitions: []types.AttributeDefinition{
@@ -71,7 +77,8 @@ func CreateMessageTable() {
 		BillingMode: types.BillingModePayPerRequest,
 	})
 	if err != nil {
-		log.Fatalf("❌ 创建 messages 表失败: %v", err)
+		log.Log.Fatalf("创建 messages 表失败: %v", err)
 	}
-	log.Println("✅ 消息表创建成功（主键为 room_id + timestamp）")
+
+	log.Log.Info("messages 表创建成功（主键为 room_id + timestamp）")
 }

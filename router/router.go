@@ -2,6 +2,7 @@ package router
 
 import (
 	"chatroom-api/handlers" // handler 层
+	log "chatroom-api/logger"
 	"chatroom-api/middleware"
 	"github.com/gin-contrib/cors" // 跨域中间件
 	"github.com/gin-gonic/gin"
@@ -10,9 +11,11 @@ import (
 
 // SetupRouter 初始化路由表，接收 hub 引用
 func SetupRouter() *gin.Engine {
+	log.Log.Info("初始化路由引擎")
 	r := gin.Default()
 
 	// 启用 CORS 中间件
+	log.Log.Info("启用 CORS 跨域支持")
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"},
 		AllowMethods:     []string{"GET", "POST", "OPTIONS"},
@@ -22,6 +25,7 @@ func SetupRouter() *gin.Engine {
 	}))
 
 	// 注册 API 路由
+	log.Log.Info("注册公开接口: /register, /login")
 	r.POST("/register", handlers.Register)
 	r.POST("/login", handlers.Login)
 
@@ -44,6 +48,7 @@ func SetupRouter() *gin.Engine {
 	//r.GET("/chatrooms/:roomId/enter", handlers.EnterChatRoom)
 
 	// 需要鉴权的接口挂在 auth group 下
+	log.Log.Info("注册受保护接口组（需鉴权）")
 	auth := r.Group("/")
 	auth.Use(middleware.AuthMiddleware())
 
@@ -55,5 +60,6 @@ func SetupRouter() *gin.Engine {
 	auth.GET("/messages/:roomId", handlers.GetChatroomMessages)
 	auth.GET("/chatrooms/:roomId/enter", handlers.EnterChatRoom)
 
+	log.Log.Info("所有路由注册完成")
 	return r
 }

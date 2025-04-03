@@ -2,10 +2,10 @@ package handlers
 
 import (
 	"chatroom-api/dynamodb"
+	log "chatroom-api/logger"
 	"encoding/hex"
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"log"
 	"math/rand"
 	"net/http"
 	"os"
@@ -39,16 +39,18 @@ type ExitChatroomRequest struct {
 }
 
 func CreateChatroom(c *gin.Context) {
-	log.Println("🔥 CreateChatroom 被触发")
+	log.Log.Info("CreateChatroom 被触发")
 	var req dynamodb.Chatroom
 	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Log.Warn("参数格式错误（创建聊天室）")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "参数格式错误"})
 		return
 	}
-
+	log.Log.Infof("验证用户是否存在: %s", req.CreatedBy)
 	// 检查用户是否存在（你也可以放后面用户加入时验证）
 	_, err := dynamodb.GetUserByUsername(req.CreatedBy)
 	if err != nil {
+		log.Log.Warnf("用户不存在: %s", req.CreatedBy)
 		c.JSON(http.StatusNotFound, gin.H{"error": "用户不存在"})
 		return
 	}
@@ -56,6 +58,7 @@ func CreateChatroom(c *gin.Context) {
 	// 用 UUID 作为 room_id
 	//roomID := uuid.New().String()
 	roomID := generateRoomID()
+	log.Log.Infof("正在创建聊天室: room_id=%s, created_by=%s", roomID, req.CreatedBy)
 	chatroom := dynamodb.Chatroom{
 		RoomID:    roomID,
 		Name:      req.Name,
@@ -66,10 +69,11 @@ func CreateChatroom(c *gin.Context) {
 	}
 
 	if err := dynamodb.CreateChatroom(chatroom); err != nil {
+		log.Log.Errorf("创建聊天室失败: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "创建聊天室失败"})
 		return
 	}
-
+	log.Log.Infof("聊天室创建成功: room_id=%s", roomID)
 	c.JSON(http.StatusOK, gin.H{
 		"message":   "聊天室创建成功",
 		"room_id":   roomID,
@@ -81,13 +85,15 @@ func CreateChatroom(c *gin.Context) {
 func JoinChatroom(c *gin.Context) {
 	var req JoinChatroomRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Log.Warn("参数格式错误（加入聊天室）")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "参数格式错误"})
 		return
 	}
-
+	log.Log.Infof("用户尝试加入聊天室: %s -> %s", req.Username, req.ChatroomID)
 	// 验证用户是否存在
 	_, err := dynamodb.GetUserByUsername(req.Username)
 	if err != nil {
+		log.Log.Warnf("用户不存在: %s", req.Username)
 		c.JSON(http.StatusNotFound, gin.H{"error": "用户不存在"})
 		return
 	}
@@ -95,6 +101,7 @@ func JoinChatroom(c *gin.Context) {
 	// 检查聊天室是否存在
 	_, err = dynamodb.GetChatroom(req.ChatroomID)
 	if err != nil {
+		log.Log.Warnf("聊天室不存在: %s", req.Username)
 		c.JSON(http.StatusNotFound, gin.H{"error": "聊天室不存在"})
 		return
 	}
@@ -102,23 +109,26 @@ func JoinChatroom(c *gin.Context) {
 	// 加入聊天室
 	err = dynamodb.AddUserToChatroom(req.Username, req.ChatroomID)
 	if err != nil {
+		log.Log.Errorf("加入聊天室失败: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "加入聊天室失败"})
 		return
 	}
-
+	log.Log.Infof("用户加入聊天室成功: %s -> %s", req.Username, req.ChatroomID)
 	c.JSON(http.StatusOK, gin.H{"message": "加入聊天室成功"})
 }
 
 func ExitChatroom(c *gin.Context) {
 	var req ExitChatroomRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Log.Warn("参数格式错误（退出聊天室）")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "参数格式错误"})
 		return
 	}
-
+	log.Log.Infof("用户请求退出聊天室: %s -> %s", req.Username, req.ChatroomID)
 	// 用户是否存在
 	_, err := dynamodb.GetUserByUsername(req.Username)
 	if err != nil {
+		log.Log.Warnf("用户不存在: %s", req.Username)
 		c.JSON(http.StatusNotFound, gin.H{"error": "用户不存在"})
 		return
 	}
@@ -126,24 +136,28 @@ func ExitChatroom(c *gin.Context) {
 	// 移除用户
 	err = dynamodb.RemoveUserFromChatroom(req.Username, req.ChatroomID)
 	if err != nil {
+		log.Log.Errorf("用户退出聊天室失败: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "退出聊天室失败"})
 		return
 	}
-
+	log.Log.Infof("用户成功退出聊天室: %s -> %s", req.Username, req.ChatroomID)
 	c.JSON(http.StatusOK, gin.H{"message": "退出聊天室成功"})
 }
 func GetUserChatrooms(c *gin.Context) {
 	username := c.Param("username")
+	log.Log.Infof("查询用户聊天室列表: %s", username)
 
 	// 检查用户是否存在
 	_, err := dynamodb.GetUserByUsername(username)
 	if err != nil {
+		log.Log.Warnf("用户不存在: %s", username)
 		c.JSON(http.StatusNotFound, gin.H{"error": "用户不存在"})
 		return
 	}
 
 	chatrooms, err := dynamodb.GetChatroomsByUsername(username)
 	if err != nil {
+		log.Log.Errorf("查询聊天室列表失败: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "查询失败"})
 		return
 	}
@@ -157,7 +171,7 @@ func GetUserChatrooms(c *gin.Context) {
 			"isPrivate": room.IsPrivate,
 		})
 	}
-
+	log.Log.Infof("用户 %s 加入的聊天室总数: %d", username, len(chatrooms))
 	c.JSON(http.StatusOK, gin.H{"rooms": rooms})
 }
 func GetChatroomMessages(c *gin.Context) {
@@ -166,7 +180,10 @@ func GetChatroomMessages(c *gin.Context) {
 	limitStr := c.DefaultQuery("limit", "20")
 	username := c.Query("username")
 
+	log.Log.Infof("拉取聊天记录: user=%s, room=%s, before=%s", username, roomID, before)
+
 	if username == "" {
+		log.Log.Warn("缺少 username 参数")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "缺少 username 参数"})
 		return
 	}
@@ -183,6 +200,7 @@ func GetChatroomMessages(c *gin.Context) {
 	messages, err := dynamodb.GetMessagesBefore(roomID, before, limit)
 	if err != nil {
 		fmt.Println("查询消息失败：", err)
+		log.Log.Errorf("查询消息失败: %v", err)
 		c.JSON(http.StatusOK, gin.H{"messages": []dynamodb.Message{}})
 		return
 	}
@@ -190,7 +208,7 @@ func GetChatroomMessages(c *gin.Context) {
 	if messages == nil {
 		messages = []dynamodb.Message{}
 	}
-
+	log.Log.Infof("查询到 %d 条消息: room=%s", len(messages), roomID)
 	c.JSON(http.StatusOK, gin.H{"messages": messages})
 }
 
@@ -198,7 +216,10 @@ func EnterChatRoom(c *gin.Context) {
 	roomID := c.Param("roomId")
 	username := c.Query("username")
 
+	log.Log.Infof("WebSocket 请求分发: user=%s, room=%s", username, roomID)
+
 	if roomID == "" || username == "" {
+		log.Log.Warn("缺少 roomId 或 username 参数")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "roomId 和 username 是必须的"})
 		return
 	}
@@ -228,14 +249,15 @@ func EnterChatRoom(c *gin.Context) {
 
 func GetChatroomByRoomID(c *gin.Context) {
 	roomID := c.Param("roomId")
+	log.Log.Infof("查询聊天室详情: room_id=%s", roomID)
 
 	chatroom, err := dynamodb.GetChatroom(roomID)
 	if err != nil {
-		log.Println("❌ 查询聊天室失败:", err)
+		log.Log.Warnf("查询聊天室失败: %v", err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "聊天室不存在"})
 		return
 	}
-
+	log.Log.Infof("查询成功: room_id=%s", roomID)
 	c.JSON(http.StatusOK, gin.H{
 		"id":        chatroom.RoomID,
 		"name":      chatroom.Name,

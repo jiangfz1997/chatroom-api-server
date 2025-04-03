@@ -1,25 +1,27 @@
 package dynamodb
 
 import (
+	log "chatroom-api/logger"
 	"context"
 	"errors"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
-	"log"
 )
 
 type User struct {
-	Username string `dynamodbav:"username"` // 👈 主键
+	Username string `dynamodbav:"username"` // 主键
 	Password string `dynamodbav:"password"`
 }
 
 var UserTableName = "users"
 
 func CreateUser(user User) error {
+	log.Log.Infof("尝试创建用户: username=%s", user.Username)
 	item, err := attributevalue.MarshalMap(user)
 	if err != nil {
+		log.Log.Errorf("用户数据序列化失败: %v", err)
 		return err
 	}
 
@@ -28,29 +30,44 @@ func CreateUser(user User) error {
 		Item:                item,
 		ConditionExpression: aws.String("attribute_not_exists(username)"), // 防止重复注册
 	})
+	if err != nil {
+		log.Log.Warnf("用户创建失败: username=%s, err=%v", user.Username, err)
+	} else {
+		log.Log.Infof("用户创建成功: username=%s", user.Username)
+	}
 	return err
 }
 
 func GetUserByUsername(username string) (*User, error) {
+	log.Log.Infof("尝试获取用户: username=%s", username)
 	out, err := DB.GetItem(context.TODO(), &dynamodb.GetItemInput{
 		TableName: &UserTableName,
 		Key: map[string]types.AttributeValue{
 			"username": &types.AttributeValueMemberS{Value: username},
 		},
 	})
-	if err != nil || out.Item == nil {
+	if err != nil {
+		log.Log.Errorf("查询用户失败: username=%s, err=%v", username, err)
+		return nil, errors.New("user not found")
+	}
+	if out.Item == nil {
+		log.Log.Warnf("用户不存在: username=%s", username)
 		return nil, errors.New("user not found")
 	}
 
 	var user User
 	err = attributevalue.UnmarshalMap(out.Item, &user)
 	if err != nil {
+		log.Log.Errorf("用户反序列化失败: username=%s, err=%v", username, err)
 		return nil, err
 	}
+
+	log.Log.Infof("成功获取用户信息: username=%s", user.Username)
 	return &user, nil
 }
 
 func CreateUserTable() {
+	log.Log.Info("开始创建 users 表")
 	_, err := DB.CreateTable(context.TODO(), &dynamodb.CreateTableInput{
 		TableName: aws.String(UserTableName),
 		AttributeDefinitions: []types.AttributeDefinition{
@@ -68,7 +85,7 @@ func CreateUserTable() {
 		BillingMode: types.BillingModePayPerRequest, // 免费账号推荐按需计费
 	})
 	if err != nil {
-		log.Fatalf("❌ 创建 users 表失败: %v", err)
+		log.Log.Fatalf("创建 users 表失败: %v", err)
 	}
-	log.Println("✅ 用户表创建成功")
+	log.Log.Info("users 表创建成功")
 }
