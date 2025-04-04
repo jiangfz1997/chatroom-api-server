@@ -15,25 +15,25 @@ import (
 var DB *dynamodb.Client
 
 func InitDB() {
-	endpoint := os.Getenv("DYNAMODB_ENDPOINT") // 本地模式會設這個
+	endpoint := os.Getenv("DYNAMODB_ENDPOINT") // local mode
 	region := os.Getenv("DYNAMODB_REGION")
 	if region == "" {
 		region = "us-west-2"
-		log.Log.Warn("⚠️ 未设置 DYNAMODB_REGION，默认使用 us-west-2")
+		log.Log.Warn("DYNAMODB_REGION is not set, defaulting to us-west-2.")
 	} else {
-		log.Log.Infof("✅ 检测到 DYNAMODB_REGION: %s", region)
+		log.Log.Infof("DYNAMODB_REGION: %s", region)
 	}
 	var cfg aws.Config
 	var err error
 
 	if endpoint != "" {
-		log.Log.Info("连接本地 DynamoDB (local mode)")
-		log.Log.Infof("当前 DynamoDB Endpoint: %s", endpoint)
+		log.Log.Info("connecting DynamoDB (local mode)")
+		log.Log.Infof("current DynamoDB Endpoint: %s", endpoint)
 		customResolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, _ ...interface{}) (aws.Endpoint, error) {
 			if service == dynamodb.ServiceID {
-				log.Log.Infof("📍 自定义解析器：服务 [%s]，区域 [%s]", service, region)
+				log.Log.Infof("custom：service [%s], region [%s]", service, region)
 				return aws.Endpoint{
-					URL:           endpoint, // DynamoDB Local 地址
+					URL:           endpoint, // DynamoDB local add
 					SigningRegion: region,
 				}, nil
 			}
@@ -48,23 +48,23 @@ func InitDB() {
 		)
 
 		if err != nil {
-			log.Log.Fatalf("加载本地 DynamoDB 配置失败: %v", err)
+			log.Log.Fatalf("Failed to load local DynamoDB configuration: %v", err)
 		}
-		log.Log.Info("本地 DynamoDB 配置加载成功")
+		log.Log.Info("Local DynamoDB configuration loaded successfully")
 	} else {
-		log.Log.Info("连接 AWS DynamoDB（真实云服务）")
+		log.Log.Info("Connect to AWS DynamoDB (real cloud service)")
 
 		cfg, err = config.LoadDefaultConfig(context.TODO(),
 			config.WithRegion(region),
 		)
 		if err != nil {
-			log.Log.Fatalf("加载 AWS 配置失败: %v", err)
+			log.Log.Fatalf("Failed to load AWS configuration: %v", err)
 		}
-		log.Log.Info("AWS配置加载成功")
+		log.Log.Info("AWS configuration loaded successfully")
 	}
 
 	DB = dynamodb.NewFromConfig(cfg)
-	log.Log.Info("DynamoDB 客户端初始化成功")
+	log.Log.Info("DynamoDB client initialized successfully")
 }
 
 func CreateAllTables() error {
@@ -80,7 +80,7 @@ func CreateAllTables() error {
 		errs = append(errs, fmt.Errorf("CreateMessageTable failed: %w", err))
 	}
 	if len(errs) > 0 {
-		errMsg := "❌ Table creation encountered errors:\n"
+		errMsg := "Table creation encountered errors:\n"
 		for _, e := range errs {
 			errMsg += " - " + e.Error() + "\n"
 		}

@@ -8,30 +8,30 @@ import (
 	"strings"
 )
 
-// 鉴权中间件：验证 JWT Token
+// Authentication middleware: Validate JWT Token
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
-			log.Log.Warn("鉴权失败：缺少或格式错误的 Authorization 头")
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "缺少或无效的 Authorization 头"})
+			log.Log.Warn("Authentication failed: Missing or incorrectly formatted Authorization header.")
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Missing or invalid Authorization header."})
 			c.Abort()
 			return
 		}
 
-		// 提取 token
+		// token
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 
-		// 解析 token 获取用户名
+		// get username
 		username, err := utils.ParseToken(tokenString)
 		if err != nil {
-			log.Log.Warnf("鉴权失败：Token 无效或已过期，err=%v", err)
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Token 无效或已过期"})
+			log.Log.Warnf("Authentication failed: Token is invalid or expired.err=%v", err)
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Token is invalid or expired."})
 			c.Abort()
 			return
 		}
-		log.Log.Infof("鉴权通过：%s", username)
-		// 设置用户名到上下文中，供后续 handler 使用
+		log.Log.Infof("Authentication successful:%s", username)
+		// Set the username in the context for use by handlers.
 		c.Set("username", username)
 
 		c.Next()

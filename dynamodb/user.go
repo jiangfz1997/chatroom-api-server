@@ -12,35 +12,35 @@ import (
 )
 
 type User struct {
-	Username string `dynamodbav:"username"` // 👈 主键
+	Username string `dynamodbav:"username"` //primary key
 	Password string `dynamodbav:"password"`
 }
 
 var UserTableName = "users"
 
 func CreateUser(user User) error {
-	log.Log.Infof("尝试创建用户: username=%s", user.Username)
+	log.Log.Infof("Attempting to create user: username=%s", user.Username)
 	item, err := attributevalue.MarshalMap(user)
 	if err != nil {
-		log.Log.Errorf("用户数据序列化失败: %v", err)
+		log.Log.Errorf("marsha userlist failed %v", err)
 		return err
 	}
 
 	_, err = DB.PutItem(context.TODO(), &dynamodb.PutItemInput{
 		TableName:           &UserTableName,
 		Item:                item,
-		ConditionExpression: aws.String("attribute_not_exists(username)"), // 防止重复注册
+		ConditionExpression: aws.String("attribute_not_exists(username)"), //Prevent duplicate registration
 	})
 	if err != nil {
-		log.Log.Warnf("用户创建失败: username=%s, err=%v", user.Username, err)
+		log.Log.Warnf("User creation failed: username=%s, err=%v", user.Username, err)
 	} else {
-		log.Log.Infof("用户创建成功: username=%s", user.Username)
+		log.Log.Infof("User created successfully: username=%s", user.Username)
 	}
 	return err
 }
 
 func GetUserByUsername(username string) (*User, error) {
-	log.Log.Infof("尝试获取用户: username=%s", username)
+	log.Log.Infof("Attempting to retrieve user: username=%s", username)
 	out, err := DB.GetItem(context.TODO(), &dynamodb.GetItemInput{
 		TableName: &UserTableName,
 		Key: map[string]types.AttributeValue{
@@ -48,33 +48,33 @@ func GetUserByUsername(username string) (*User, error) {
 		},
 	})
 	if err != nil {
-		log.Log.Errorf("查询用户失败: username=%s, err=%v", username, err)
+		log.Log.Errorf("Failed to query user: username=%s, err=%v", username, err)
 		return nil, errors.New("user not found")
 	}
 	if out.Item == nil {
-		log.Log.Warnf("用户不存在: username=%s", username)
+		log.Log.Warnf("user not exist: username=%s", username)
 		return nil, errors.New("user not found")
 	}
 
 	var user User
 	err = attributevalue.UnmarshalMap(out.Item, &user)
 	if err != nil {
-		log.Log.Errorf("用户反序列化失败: username=%s, err=%v", username, err)
+		log.Log.Errorf("unmarshal user failed: username=%s, err=%v", username, err)
 		return nil, err
 	}
 
-	log.Log.Infof("成功获取用户信息: username=%s", user.Username)
+	log.Log.Infof("Successfully retrieved user information: username=%s", user.Username)
 	return &user, nil
 }
 
 func CreateUserTable() error {
-	log.Log.Info("开始创建 users 表")
+	log.Log.Info("Starting to create users table")
 	_, err := DB.CreateTable(context.TODO(), &dynamodb.CreateTableInput{
 		TableName: aws.String(UserTableName),
 		AttributeDefinitions: []types.AttributeDefinition{
 			{
 				AttributeName: aws.String("username"),
-				AttributeType: types.ScalarAttributeTypeS, // String 类型
+				AttributeType: types.ScalarAttributeTypeS, // String
 			},
 		},
 		KeySchema: []types.KeySchemaElement{
@@ -83,19 +83,18 @@ func CreateUserTable() error {
 				KeyType:       types.KeyTypeHash,
 			},
 		},
-		BillingMode: types.BillingModePayPerRequest, // 免费账号推荐按需计费
+		BillingMode: types.BillingModePayPerRequest,
 	})
 	if err != nil {
-		// 容错：如果表已存在，不返回错误
+		// Error handling: If the table already exists, do not return an error.
 		var rne *types.ResourceInUseException
 		if errors.As(err, &rne) {
-			log.Log.Info("⚠️ 用户表 [%s] 已存在，跳过创建", UserTableName)
+			log.Log.Info("User table [%s] already exists, skipping creation.", UserTableName)
 			return nil
 		}
 
-		// 其余错误要向上传递
-		return fmt.Errorf("创建用户表 [%s] 失败: %w", UserTableName, err)
+		return fmt.Errorf("create user table [%s] failed: %w", UserTableName, err)
 	}
-	log.Log.Info("users 表创建成功")
+	log.Log.Info("users table created successfully")
 	return nil
 }
