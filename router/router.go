@@ -23,12 +23,12 @@ func SetupRouter() *gin.Engine {
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}))
-
+	api := r.Group("/api")
 	// 注册 API 路由
 	log.Log.Info("注册公开接口: /register, /login")
-	r.POST("/register", handlers.Register)
-	r.POST("/login", handlers.Login)
-	r.GET("/health", handlers.HealthCheck)
+	api.POST("/register", handlers.Register)
+	api.POST("/login", handlers.Login)
+	api.GET("/health", handlers.HealthCheck)
 	// 注册 WebSocket 路由：客户端连接 ws://localhost:8080/ws/1?username=aaa
 	//r.GET("/ws/:roomId", handlers.ServeWs(hub))
 
@@ -49,7 +49,7 @@ func SetupRouter() *gin.Engine {
 
 	// 需要鉴权的接口挂在 auth group 下
 	log.Log.Info("注册受保护接口组（需鉴权）")
-	auth := r.Group("/")
+	auth := api.Group("/")
 	auth.Use(middleware.AuthMiddleware())
 
 	auth.POST("/chatrooms", handlers.CreateChatroom)

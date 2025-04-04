@@ -55,8 +55,6 @@ func CreateChatroom(c *gin.Context) {
 		return
 	}
 
-	// 用 UUID 作为 room_id
-	//roomID := uuid.New().String()
 	roomID := generateRoomID()
 	log.Log.Infof("正在创建聊天室: room_id=%s, created_by=%s", roomID, req.CreatedBy)
 	chatroom := dynamodb.Chatroom{
