@@ -3,6 +3,7 @@ package main
 import (
 	"chatroom-api/dynamodb"
 	"chatroom-api/logger"
+	"chatroom-api/redis"
 	"chatroom-api/router"
 	"github.com/joho/godotenv"
 )
@@ -23,6 +24,10 @@ func main() {
 	log.Info("Starting database initialization.")
 	dynamodb.InitDB()
 	log.Info("Database initialization completed.")
+
+	log.Info("Initializing Redis connection")
+	redis.InitRedis()
+	log.Info("Redis connection initialized")
 
 	if err := dynamodb.CreateAllTables(); err != nil {
 		log.Warn("Failed to create DynamoDB tables: %v (ignored)", err)

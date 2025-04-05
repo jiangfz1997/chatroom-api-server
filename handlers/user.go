@@ -4,11 +4,16 @@ import (
 	//"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"chatroom-api/dynamodb"
 	log "chatroom-api/logger"
+	"chatroom-api/redis"
 	"chatroom-api/utils"
+	"context"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"strings"
+	"time"
 )
+
+var ctx = context.Background()
 
 type RegisterRequest struct {
 	Username string `json:"username"`
@@ -77,6 +82,8 @@ func Login(c *gin.Context) {
 		return
 	}
 	log.Log.Infof("login success: %s，Token generated", req.Username)
+
+	redis.Rdb.Set(ctx, "token:"+token, req.Username, 24*time.Hour)
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":  "login success",
